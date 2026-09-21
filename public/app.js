@@ -14,6 +14,8 @@
     focusMin: $('focusMin'), shortMin: $('shortMin'), longMin: $('longMin'),
     interval: $('interval'), autoNext: $('autoNext'), soundOn: $('soundOn'),
     grid: $('grid'), streak: $('streak'),
+    exportBtn: $('exportBtn'), importBtn: $('importBtn'),
+    importFile: $('importFile'), ioNote: $('ioNote'),
   };
 
   const store = {
@@ -251,6 +253,78 @@
     }
   }
 
+  /* ---------- export / import ---------- */
+
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  function note(text, state) {
+    el.ioNote.textContent = text;
+    el.ioNote.dataset.state = state || 'ok';
+  }
+
+  function exportData() {
+    const payload = {
+      app: 'medpomo',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      settings: settings,
+      history: history,
+    };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `medpomo-${today()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    const days = Object.keys(history).length;
+    note(`Exported ${days} day${days === 1 ? '' : 's'}.`);
+  }
+
+  // Keeps whichever record has more minutes for a given day, so importing a
+  // backup on a device that already has data can't halve a day's total.
+  function importData(text) {
+    let data;
+    try { data = JSON.parse(text); } catch (_) { throw new Error('That file is not valid JSON.'); }
+    if (!data || data.app !== 'medpomo' || !data.history || typeof data.history !== 'object') {
+      throw new Error('That does not look like a MedPOMO export.');
+    }
+    let added = 0;
+    Object.keys(data.history).forEach((key) => {
+      if (!DATE_RE.test(key)) return;
+      const day = data.history[key];
+      if (!day || !Number.isFinite(day.c) || !Number.isFinite(day.m) || day.c <= 0 || day.m < 0) return;
+      const mine = history[key];
+      if (!mine || day.m > mine.m) {
+        history[key] = { c: Math.round(day.c), m: Math.round(day.m) };
+        added += 1;
+      }
+    });
+    store.set('medpomo.history', history);
+
+    // A restore should bring preferences back too, clamped like typed input.
+    const s = data.settings;
+    if (s && typeof s === 'object') {
+      el.focusMin.value = s.focus;
+      el.shortMin.value = s.short;
+      el.longMin.value = s.long;
+      el.interval.value = s.interval;
+      el.autoNext.checked = !!s.autoNext;
+      el.soundOn.checked = !!s.sound;
+      readSettings();
+    }
+
+    // Today's counters are derived from history, so keep them in step.
+    const todayEntry = history[today()];
+    if (todayEntry && todayEntry.m > stats.minutes) {
+      stats.count = todayEntry.c;
+      stats.minutes = todayEntry.m;
+      stats.log = [];              // per-session detail isn't in the export
+      store.set('medpomo.stats', stats);
+    }
+    render();
+    return added;
+  }
+
   /* ---------- chime ---------- */
 
   let audioCtx = null;
@@ -350,6 +424,26 @@
     if (el.undo.disabled) return;
     undoSession();
     flash(el.undo, '\u2713', '\u22121');
+  });
+
+  el.exportBtn.addEventListener('click', exportData);
+  el.importBtn.addEventListener('click', () => el.importFile.click());
+
+  el.importFile.addEventListener('change', () => {
+    const file = el.importFile.files && el.importFile.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const added = importData(String(reader.result));
+        note(added === 0 ? 'Nothing new to import.' : `Imported ${added} day${added === 1 ? '' : 's'}.`);
+      } catch (err) {
+        note(err.message, 'error');
+      }
+      el.importFile.value = '';   // let the same file be picked again
+    };
+    reader.onerror = () => { note('Could not read that file.', 'error'); el.importFile.value = ''; };
+    reader.readAsText(file);
   });
 
   el.resetStats.addEventListener('click', () => {
