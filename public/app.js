@@ -10,7 +10,7 @@
     time: $('time'), label: $('label'), ring: $('ringFill'),
     start: $('startBtn'), reset: $('resetBtn'), skip: $('skipBtn'),
     settingsBtn: $('settingsBtn'), settings: $('settings'),
-    doneCount: $('doneCount'), doneMins: $('doneMins'), resetStats: $('resetStats'),
+    doneCount: $('doneCount'), doneMins: $('doneMins'), resetStats: $('resetStats'), log: $('logBtn'),
     focusMin: $('focusMin'), shortMin: $('shortMin'), longMin: $('longMin'),
     interval: $('interval'), autoNext: $('autoNext'), soundOn: $('soundOn'),
   };
@@ -113,15 +113,22 @@
     render();
   }
 
+  // Credits a finished focus session — used both by the timer and by the
+  // "+1" button, for sessions run on another timer.
+  function addSession(minutes) {
+    if (stats.date !== today()) stats = { date: today(), count: 0, minutes: 0 };
+    stats.count += 1;
+    stats.minutes += minutes;
+    store.set('medpomo.stats', stats);
+    render();
+  }
+
   function complete() {
     stop();
     chime();
     if (mode === 'focus') {
       round += 1;
-      stats.date = today();
-      stats.count += 1;
-      stats.minutes += settings.focus;
-      store.set('medpomo.stats', stats);
+      addSession(settings.focus);
       const long = round % settings.interval === 0;
       setMode(long ? 'long' : 'short', settings.autoNext);
     } else {
@@ -219,6 +226,12 @@
   });
   el.autoNext.addEventListener('change', readSettings);
   el.soundOn.addEventListener('change', readSettings);
+
+  el.log.addEventListener('click', () => {
+    addSession(settings.focus);
+    el.log.textContent = '\u2713';
+    setTimeout(() => { el.log.textContent = '+1'; }, 900);
+  });
 
   el.resetStats.addEventListener('click', () => {
     stats = { date: today(), count: 0, minutes: 0 };
