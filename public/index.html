@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>MedPOMO</title>
+<meta name="description" content="A warm, minimal Pomodoro timer for focused study sessions." />
+<meta name="theme-color" content="#FBF8F3" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='54' r='34' fill='none' stroke='%23C8593F' stroke-width='9'/><path d='M50 36v20' stroke='%23C8593F' stroke-width='9' stroke-linecap='round'/></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=IBM+Plex+Mono:wght@200;300&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<main class="wrap">
+  <header class="head">
+    <h1 class="brand">MedPOMO</h1>
+    <button id="settingsBtn" class="ghost" aria-label="Settings" aria-expanded="false">Settings</button>
+  </header>
+
+  <nav class="modes" role="tablist" aria-label="Timer mode">
+    <button class="mode is-active" role="tab" data-mode="focus" aria-selected="true">Focus</button>
+    <button class="mode" role="tab" data-mode="short" aria-selected="false">Short break</button>
+    <button class="mode" role="tab" data-mode="long" aria-selected="false">Long break</button>
+  </nav>
+
+  <section class="dial" aria-live="off">
+    <svg class="ring" viewBox="0 0 240 240" aria-hidden="true">
+      <circle class="ring-track" cx="120" cy="120" r="112" />
+      <circle class="ring-fill" id="ringFill" cx="120" cy="120" r="112" />
+    </svg>
+    <div class="dial-center">
+      <div id="time" class="time" role="timer" aria-live="polite">25:00</div>
+      <div id="label" class="label">Time to focus</div>
+    </div>
+  </section>
+
+  <div class="controls">
+    <button id="startBtn" class="primary">Start</button>
+    <button id="resetBtn" class="ghost" aria-label="Reset timer">Reset</button>
+    <button id="skipBtn" class="ghost" aria-label="Skip to next session">Skip</button>
+  </div>
+
+  <p class="count"><span id="doneCount">0</span> sessions today · <span id="doneMins">0</span> min focused</p>
+
+  <section id="settings" class="settings" hidden>
+    <div class="row"><label for="focusMin">Focus</label><input id="focusMin" type="number" min="1" max="180" step="1" /><span class="unit">min</span></div>
+    <div class="row"><label for="shortMin">Short break</label><input id="shortMin" type="number" min="1" max="60" step="1" /><span class="unit">min</span></div>
+    <div class="row"><label for="longMin">Long break</label><input id="longMin" type="number" min="1" max="120" step="1" /><span class="unit">min</span></div>
+    <div class="row"><label for="interval">Long break after</label><input id="interval" type="number" min="2" max="12" step="1" /><span class="unit">rounds</span></div>
+    <div class="row check"><label for="autoNext">Auto-start next session</label><input id="autoNext" type="checkbox" /></div>
+    <div class="row check"><label for="soundOn">Chime when done</label><input id="soundOn" type="checkbox" /></div>
+    <button id="resetStats" class="ghost small">Clear today’s count</button>
+  </section>
+
+  <footer class="foot">Space to start / pause · R to reset</footer>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
