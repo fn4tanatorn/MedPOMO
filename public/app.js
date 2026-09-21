@@ -10,7 +10,7 @@
     time: $('time'), label: $('label'), ring: $('ringFill'),
     start: $('startBtn'), reset: $('resetBtn'), skip: $('skipBtn'),
     settingsBtn: $('settingsBtn'), settings: $('settings'),
-    doneCount: $('doneCount'), doneMins: $('doneMins'), resetStats: $('resetStats'), log: $('logBtn'),
+    doneCount: $('doneCount'), doneMins: $('doneMins'), resetStats: $('resetStats'), log: $('logBtn'), undo: $('undoBtn'),
     focusMin: $('focusMin'), shortMin: $('shortMin'), longMin: $('longMin'),
     interval: $('interval'), autoNext: $('autoNext'), soundOn: $('soundOn'),
   };
@@ -29,9 +29,14 @@
 
   const today = () => new Date().toISOString().slice(0, 10);
 
+  // `log` holds the minutes credited per session, newest last, so undo can
+  // remove exactly what was added even if the focus length changed since.
+  const emptyStats = () => ({ date: today(), count: 0, minutes: 0, log: [] });
+
   let settings = Object.assign({}, DEFAULTS, store.get('medpomo.settings', {}));
-  let stats = store.get('medpomo.stats', { date: today(), count: 0, minutes: 0 });
-  if (stats.date !== today()) stats = { date: today(), count: 0, minutes: 0 };
+  let stats = store.get('medpomo.stats', emptyStats());
+  if (stats.date !== today()) stats = emptyStats();
+  if (!Array.isArray(stats.log)) stats.log = [];   // stats saved before undo existed
 
   let mode = 'focus';
   let round = 0;              // completed focus sessions in the current cycle
@@ -64,8 +69,9 @@
       b.classList.toggle('is-active', on);
       b.setAttribute('aria-selected', String(on));
     });
-    el.doneCount.textContent = stats.count;
+    el.doneCount.textContent = stats.count === 1 ? '1 session' : `${stats.count} sessions`;
     el.doneMins.textContent = stats.minutes;
+    el.undo.disabled = stats.count === 0;
   }
 
   /* ---------- timer ---------- */
@@ -116,9 +122,20 @@
   // Credits a finished focus session — used both by the timer and by the
   // "+1" button, for sessions run on another timer.
   function addSession(minutes) {
-    if (stats.date !== today()) stats = { date: today(), count: 0, minutes: 0 };
+    if (stats.date !== today()) stats = emptyStats();
     stats.count += 1;
     stats.minutes += minutes;
+    stats.log.push(minutes);
+    store.set('medpomo.stats', stats);
+    render();
+  }
+
+  // Removes the most recently credited session, for a mis-tapped "+1".
+  function undoSession() {
+    if (stats.count === 0) return;
+    const minutes = stats.log.length ? stats.log.pop() : settings.focus;
+    stats.count -= 1;
+    stats.minutes = Math.max(0, stats.minutes - minutes);
     store.set('medpomo.stats', stats);
     render();
   }
@@ -227,14 +244,28 @@
   el.autoNext.addEventListener('change', readSettings);
   el.soundOn.addEventListener('change', readSettings);
 
+  // Brief confirmation on a button, with its own timer so two buttons
+  // flashing at once don't cancel each other's restore.
+  const flashTimers = new WeakMap();
+  function flash(btn, mark, restore) {
+    btn.textContent = mark;
+    clearTimeout(flashTimers.get(btn));
+    flashTimers.set(btn, setTimeout(() => { btn.textContent = restore; }, 900));
+  }
+
   el.log.addEventListener('click', () => {
     addSession(settings.focus);
-    el.log.textContent = '\u2713';
-    setTimeout(() => { el.log.textContent = '+1'; }, 900);
+    flash(el.log, '\u2713', '+1');
+  });
+
+  el.undo.addEventListener('click', () => {
+    if (el.undo.disabled) return;
+    undoSession();
+    flash(el.undo, '\u2713', '\u22121');
   });
 
   el.resetStats.addEventListener('click', () => {
-    stats = { date: today(), count: 0, minutes: 0 };
+    stats = emptyStats();
     store.set('medpomo.stats', stats);
     render();
   });
