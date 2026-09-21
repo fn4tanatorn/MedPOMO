@@ -48,6 +48,15 @@
     <button id="undoBtn" class="ghost small tally" title="Undo the last logged session">&minus;1</button>
   </div>
 
+  <section class="heat" aria-label="Focus minutes over the last 12 weeks">
+    <div class="heat-head">
+      <span class="heat-title">Last 12 weeks</span>
+      <span id="streak" class="heat-streak">No streak yet</span>
+    </div>
+    <div id="grid" class="grid"></div>
+    <div class="heat-legend"><span>Less</span><i data-level="1"></i><i data-level="2"></i><i data-level="3"></i><i data-level="4"></i><span>More</span></div>
+  </section>
+
   <section id="settings" class="settings" hidden>
     <div class="row"><label for="focusMin">Focus</label><input id="focusMin" type="number" min="1" max="180" step="1" /><span class="unit">min</span></div>
     <div class="row"><label for="shortMin">Short break</label><input id="shortMin" type="number" min="1" max="60" step="1" /><span class="unit">min</span></div>

@@ -10,7 +10,12 @@ just static files in `public/`.
 - Progress ring, live tab title, soft chime on completion
 - Optional auto-start of the next session
 - Today's session and focused-minute count, stored locally
+- `+1` / `−1` to log or undo a session run on another timer
+- 12-week heatmap of focused minutes, with the current streak
 - Keyboard: `Space` start/pause, `R` reset
+
+All history lives in `localStorage`, so it is per-browser and does not sync
+between devices.
 
 ## Run locally
 

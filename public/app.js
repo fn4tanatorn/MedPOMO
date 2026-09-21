@@ -13,6 +13,7 @@
     doneCount: $('doneCount'), doneMins: $('doneMins'), resetStats: $('resetStats'), log: $('logBtn'), undo: $('undoBtn'),
     focusMin: $('focusMin'), shortMin: $('shortMin'), longMin: $('longMin'),
     interval: $('interval'), autoNext: $('autoNext'), soundOn: $('soundOn'),
+    grid: $('grid'), streak: $('streak'),
   };
 
   const store = {
@@ -27,7 +28,15 @@
     },
   };
 
-  const today = () => new Date().toISOString().slice(0, 10);
+  // Local calendar date, not UTC: a day here has to end at the user's
+  // midnight, not at 07:00 for anyone east of Greenwich.
+  function dateKey(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  const today = () => dateKey(new Date());
 
   // `log` holds the minutes credited per session, newest last, so undo can
   // remove exactly what was added even if the focus length changed since.
@@ -37,6 +46,16 @@
   let stats = store.get('medpomo.stats', emptyStats());
   if (stats.date !== today()) stats = emptyStats();
   if (!Array.isArray(stats.log)) stats.log = [];   // stats saved before undo existed
+
+  // Per-day totals, kept forever: { 'YYYY-MM-DD': { c: sessions, m: minutes } }.
+  let history = store.get('medpomo.history', {});
+  if (!history || typeof history !== 'object') history = {};
+
+  function saveDay() {
+    if (stats.count > 0) history[stats.date] = { c: stats.count, m: stats.minutes };
+    else delete history[stats.date];
+    store.set('medpomo.history', history);
+  }
 
   let mode = 'focus';
   let round = 0;              // completed focus sessions in the current cycle
@@ -72,6 +91,73 @@
     el.doneCount.textContent = stats.count === 1 ? '1 session' : `${stats.count} sessions`;
     el.doneMins.textContent = stats.minutes;
     el.undo.disabled = stats.count === 0;
+    renderHeatmap();
+  }
+
+  /* ---------- heatmap ---------- */
+
+  const WEEKS = 12;
+  const DAY_MS = 86400000;
+
+  // Minutes -> ramp step. One hue, light to dark; 0 stays on the empty tone.
+  function level(minutes) {
+    if (!minutes) return 0;
+    if (minutes < 50) return 1;      // a session or two
+    if (minutes < 100) return 2;
+    if (minutes < 180) return 3;
+    return 4;                        // a long day
+  }
+
+  const FMT = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+
+  // The grid runs in week columns ending with the current week, so the last
+  // column always holds today.
+  function gridStart() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));   // back to this Monday
+    d.setDate(d.getDate() - (WEEKS - 1) * 7);
+    return d;
+  }
+
+  function currentStreak() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    // A day with nothing logged yet doesn't break a streak until it's over.
+    if (!history[dateKey(d)]) d.setDate(d.getDate() - 1);
+    let n = 0;
+    while (history[dateKey(d)]) { n += 1; d.setDate(d.getDate() - 1); }
+    return n;
+  }
+
+  function renderHeatmap() {
+    const start = gridStart();
+    const todayKey = today();
+    const cells = el.grid.children;
+    for (let i = 0; i < WEEKS * 7; i += 1) {
+      const col = Math.floor(i / 7);
+      const row = i % 7;
+      const date = new Date(start.getTime() + (col * 7 + row) * DAY_MS);
+      const key = dateKey(date);
+      const day = history[key];
+      const cell = cells[i];
+      const future = date.getTime() > Date.now();
+      cell.dataset.level = future ? 'none' : String(level(day ? day.m : 0));
+      cell.classList.toggle('is-today', key === todayKey);
+      cell.setAttribute('title', future ? '' : `${FMT.format(date)} · ${day ? `${day.c} session${day.c === 1 ? '' : 's'} · ${day.m} min` : 'nothing logged'}`);
+    }
+    const streak = currentStreak();
+    el.streak.textContent = streak === 0 ? 'No streak yet' : `${streak}-day streak`;
+  }
+
+  function buildHeatmap() {
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < WEEKS * 7; i += 1) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      frag.appendChild(cell);
+    }
+    el.grid.appendChild(frag);
   }
 
   /* ---------- timer ---------- */
@@ -127,6 +213,7 @@
     stats.minutes += minutes;
     stats.log.push(minutes);
     store.set('medpomo.stats', stats);
+    saveDay();
     render();
   }
 
@@ -137,6 +224,7 @@
     stats.count -= 1;
     stats.minutes = Math.max(0, stats.minutes - minutes);
     store.set('medpomo.stats', stats);
+    saveDay();
     render();
   }
 
@@ -267,6 +355,7 @@
   el.resetStats.addEventListener('click', () => {
     stats = emptyStats();
     store.set('medpomo.stats', stats);
+    saveDay();          // clears today from the heatmap too
     render();
   });
 
@@ -279,6 +368,7 @@
   // Keep the display honest after the tab has been backgrounded.
   document.addEventListener('visibilitychange', () => { if (running) tick(); });
 
+  buildHeatmap();
   fillSettings();
   setMode('focus', false);
 })();
