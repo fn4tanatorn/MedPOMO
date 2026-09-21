@@ -64,7 +64,13 @@
     <div class="row"><label for="interval">Long break after</label><input id="interval" type="number" min="2" max="12" step="1" /><span class="unit">rounds</span></div>
     <div class="row check"><label for="autoNext">Auto-start next session</label><input id="autoNext" type="checkbox" /></div>
     <div class="row check"><label for="soundOn">Chime when done</label><input id="soundOn" type="checkbox" /></div>
-    <button id="resetStats" class="ghost small">Clear today’s count</button>
+    <div class="row actions">
+      <button id="exportBtn" class="ghost small">Export data</button>
+      <button id="importBtn" class="ghost small">Import data</button>
+      <button id="resetStats" class="ghost small">Clear today’s count</button>
+    </div>
+    <input id="importFile" type="file" accept="application/json,.json" hidden />
+    <p id="ioNote" class="io-note" role="status" aria-live="polite"></p>
   </section>
 
   <footer class="foot">Space to start / pause · R to reset</footer>

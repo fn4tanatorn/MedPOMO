@@ -15,7 +15,10 @@ just static files in `public/`.
 - Keyboard: `Space` start/pause, `R` reset
 
 All history lives in `localStorage`, so it is per-browser and does not sync
-between devices.
+between devices. Settings → **Export data** downloads everything as JSON, and
+**Import data** reads it back — use it as a backup, or to move your history to
+another device. Importing merges rather than overwrites: for a day present on
+both sides, the record with more minutes wins.
 
 ## Run locally
 
