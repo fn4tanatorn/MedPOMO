@@ -42,7 +42,10 @@
     <button id="skipBtn" class="ghost" aria-label="Skip to next session">Skip</button>
   </div>
 
-  <p class="count"><span id="doneCount">0</span> sessions today · <span id="doneMins">0</span> min focused</p>
+  <div class="count">
+    <p class="count-text"><span id="doneCount">0</span> sessions today · <span id="doneMins">0</span> min focused</p>
+    <button id="logBtn" class="ghost small" title="Log a session you finished elsewhere">+1</button>
+  </div>
 
   <section id="settings" class="settings" hidden>
     <div class="row"><label for="focusMin">Focus</label><input id="focusMin" type="number" min="1" max="180" step="1" /><span class="unit">min</span></div>
